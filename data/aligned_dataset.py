@@ -2,7 +2,7 @@ import os.path
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 from PIL import Image
-
+import torchvision.transforms as transforms
 
 class AlignedDataset(BaseDataset):
     """A dataset class for paired image dataset.
@@ -23,6 +23,21 @@ class AlignedDataset(BaseDataset):
         assert(self.opt.load_size >= self.opt.crop_size)   # crop_size should be smaller than the size of loaded image
         self.input_nc = self.opt.output_nc if self.opt.direction == 'BtoA' else self.opt.input_nc
         self.output_nc = self.opt.input_nc if self.opt.direction == 'BtoA' else self.opt.output_nc
+
+        self.transform_A = transforms.Compose([
+            transforms.Resize((int(256 * 1.1), int(256 * 1.1))),
+            transforms.RandomRotation(3),
+            transforms.RandomCrop(256),
+            transforms.ColorJitter(hue=.05, saturation=.05),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
+        self.transform_B = transforms.Compose([
+            transforms.Resize((256, 256)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
     def __getitem__(self, index):
         """Return a data point and its metadata information.
@@ -46,12 +61,15 @@ class AlignedDataset(BaseDataset):
         B = AB.crop((w2, 0, w, h))
 
         # apply the same transform to both A and B
-        transform_params = get_params(self.opt, A.size)
-        A_transform = get_transform(self.opt, transform_params, grayscale=(self.input_nc == 1))
-        B_transform = get_transform(self.opt, transform_params, grayscale=(self.output_nc == 1))
+        #transform_params = get_params(self.opt, A.size)
+        #A_transform = get_transform(self.opt, transform_params, grayscale=(self.input_nc == 1))
+        #B_transform = get_transform(self.opt, transform_params, grayscale=(self.output_nc == 1))
 
-        A = A_transform(A)
-        B = B_transform(B)
+        #A = A_transform(A)
+        #B = B_transform(B)
+
+        A = self.transform_A(A)
+        B = self.transform_B(B)
 
         return {'A': A, 'B': B, 'A_paths': AB_path, 'B_paths': AB_path}
 
